@@ -137,8 +137,8 @@ class Nucleus:
             self.pretty = r"\mathrm{p}_\mathrm{NSE}"
             self.caps_name = "p_NSE"
             self.nse = True
-        elif name.lower().strip() in ("al-6", "al*6"):
-            raise UnsupportedNucleus("isomers of Al26 are not currently supported")
+        #elif name.lower().strip() in ("al-6", "al*6"):
+         #   raise UnsupportedNucleus("isomers of Al26 are not currently supported")
         else:
             if e := re.match(r"^([a-zA-Z]+)(\d*)$", name):
                 self.el = e.group(1).title()  # chemical symbol
