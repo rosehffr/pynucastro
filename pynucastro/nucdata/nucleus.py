@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from unicodedata import name
 
 from pynucastro.constants import constants
 from pynucastro.nucdata.elements import PeriodicTable, UnidentifiedElement
@@ -86,10 +87,12 @@ class Nucleus:
 
     def __init__(self, name, dummy=False):
         name = name.lower()
+
         self.raw = name
 
         self.dummy = dummy
         self.nse = False
+        self.isomer_state = "ground state" # Ground state as the default
 
         # element symbol and atomic weight
         if name == "p":
@@ -140,20 +143,43 @@ class Nucleus:
         #elif name.lower().strip() in ("al-6", "al*6"):
          #   raise UnsupportedNucleus("isomers of Al26 are not currently supported")
         else:
-            if e := re.match(r"^([a-zA-Z]+)(\d*)$", name):
-                self.el = e.group(1).title()  # chemical symbol
+            if e := re.match(r"^([a-zA-Z]+)(\d+)$", name):
+                self.el = e.group(1).title()
                 self.A = int(e.group(2))
-            elif e := re.match(r"^(\d*)([a-zA-Z]*)$", name):
-                self.el = e.group(2).title()  # chemical symbol
+            elif e := re.match(r"^(\d+)([a-zA-Z]+)$", name):
+                self.el = e.group(2).title()
                 self.A = int(e.group(1))
+            elif e := re.match(r"^(al)\*(\d*)$", name):
+                self.el = "al"
+                self.A = 26
+                self.isomer_state = "excited"
+                self.short_spec_name = "al26isomer"
+                self.raw = "al26isomer"
+                self.caps_name = "Al26isomer"
+            elif e := re.match(r"^(al)\-((\d+))$", name):  # for al-6
+                self.el = "al"
+                self.A = 26
+                self.isomer_state = "excited"
+                self.short_spec_name = "al26isomer"
+                self.raw = "al26isomer"
+                self.caps_name = "Al26isomer"
             if e is None:
                 raise ValueError(f"invalid nucleus string, {name}")
 
             assert self.el
             assert self.A >= 0
-            self.short_spec_name = f"{self.el.lower()}{self.A}"
-            self.raw = f"{self.el.lower()}{self.A}"
-            self.caps_name = self.short_spec_name.capitalize()
+            #self.short_spec_name = f"{self.el.lower()}{self.A}"
+            #self.raw = f"{self.el.lower()}{self.A}"
+            #self.caps_name = self.short_spec_name.capitalize()
+
+            if self.isomer_state == "excited":
+                self.short_spec_name = f"{self.el.lower()}{self.A}isomer"
+                self.raw = f"{self.el.lower()}{self.A}isomer"
+                self.caps_name = self.short_spec_name.capitalize()
+            else:
+                self.short_spec_name = f"{self.el.lower()}{self.A}"
+                self.raw = f"{self.el.lower()}{self.A}"
+                self.caps_name = self.short_spec_name.capitalize()
 
         # use lowercase element abbreviation regardless the case of the input
         self.el = self.el.lower()
@@ -316,8 +342,9 @@ class Nucleus:
             return self.raw.capitalize()
         return self.raw
 
+    #Added a call for the isomer state
     def __hash__(self):
-        return hash((self.Z, self.A))
+        return hash((self.Z, self.A, self.isomer_state))
 
     def c(self):
         """Return the capitalized-style name"""
@@ -331,7 +358,8 @@ class Nucleus:
         if isinstance(other, Nucleus):
             return (self.el == other.el and
                     self.Z == other.Z and self.A == other.A and
-                    self.nse == other.nse)
+                    self.nse == other.nse and
+                    self.isomer_state == other.isomer_state)
         if isinstance(other, tuple):
             return (self.Z, self.A) == other
         return NotImplemented

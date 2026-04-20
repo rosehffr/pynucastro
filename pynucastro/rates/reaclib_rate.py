@@ -338,6 +338,7 @@ class ReacLibRate(Rate):
         same reaction. Must be Reaclib rates.
 
         """
+        
         assert self.reactants == other.reactants
         assert self.products == other.products
         assert self.chapter == other.chapter
