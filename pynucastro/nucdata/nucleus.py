@@ -23,6 +23,14 @@ _spin_table = SpinTable()
 # read the partition function table once and store it at the module-level
 _pcollection = PartitionFunctionCollection(use_high_temperatures=True, use_set='frdm')
 
+_NUCLEUS_SYMBOL_MASS_RE = re.compile(r"^([a-zA-Z]+)(\d*)$")
+_NUCLEUS_MASS_SYMBOL_RE = re.compile(r"^(\d*)([a-zA-Z]*)$")
+_ALUMINUM_26_ISOMER_GND = re.compile(r"^(al)\-((\d+))$")
+_ALUMINUM_26_ISOMER = re.compile(r"^(al)\*(\d*)$")
+
+# Note: for Nubase 2020, we need to use the CODATA 18 constants
+_mass_H = _mass_table.get_mass_diff(a=1, z=1) + constants.m_u_MeV_C18
+
 
 class UnsupportedNucleus(Exception):
     """Exception for a nucleus that we do not know about."""
@@ -143,20 +151,20 @@ class Nucleus:
         #elif name.lower().strip() in ("al-6", "al*6"):
          #   raise UnsupportedNucleus("isomers of Al26 are not currently supported")
         else:
-            if e := re.match(r"^([a-zA-Z]+)(\d+)$", name):
-                self.el = e.group(1).title()
+            if e := _NUCLEUS_SYMBOL_MASS_RE.match(name):
+                self.el = e.group(1).title()  # chemical symbol
                 self.A = int(e.group(2))
-            elif e := re.match(r"^(\d+)([a-zA-Z]+)$", name):
-                self.el = e.group(2).title()
+            elif e := _NUCLEUS_MASS_SYMBOL_RE.match(name):
+                self.el = e.group(2).title()  # chemical symbol
                 self.A = int(e.group(1))
-            elif e := re.match(r"^(al)\*(\d*)$", name):
+            elif e := _ALUMINUM_26_ISOMER.match(name): # for al*6
                 self.el = "al"
                 self.A = 26
                 self.isomer_state = "excited"
                 self.short_spec_name = "al26isomer"
                 self.raw = "al26isomer"
                 self.caps_name = "Al26isomer"
-            elif e := re.match(r"^(al)\-((\d+))$", name):  # for al-6
+            elif e := _ALUMINUM_26_ISOMER_GND.match(name):  # for al-6
                 self.el = "al"
                 self.A = 26
                 self.isomer_state = "excited"
@@ -216,12 +224,10 @@ class Nucleus:
 
         # nuclear mass
         try:
-            # Note: for Nubase 2020, we need to use the CODATA 18 constants
-            mass_H = _mass_table.get_mass_diff(a=1, z=1) + constants.m_u_MeV_C18
             self.dm = _mass_table.get_mass_diff(a=self.A, z=self.Z)
             self.A_nuc = float(self.A) + self.dm / constants.m_u_MeV_C18
             self.mass = self.A * constants.m_u_MeV_C18 + self.dm
-            B = (self.Z * mass_H + self.N * constants.m_n_MeV_C18) - self.mass
+            B = (self.Z * _mass_H + self.N * constants.m_n_MeV_C18) - self.mass
             self.nucbind = B / self.A
 
         except NotImplementedError:
